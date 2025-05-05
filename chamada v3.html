@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chamada de Alunos</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome para ícones -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-bottom: 70px; /* Espaço para o botão fixo no final */
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .student-list {
+            margin-top: 20px;
+        }
+        .student-item {
+            border-left: 4px solid #28a745;
+            transition: all 0.3s;
+        }
+        .student-item.absent {
+            border-left: 4px solid #dc3545;
+            background-color: #ffebee;
+        }
+        .student-card {
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .bottom-button {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            background-color: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .attendance-date {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .badge-present {
+            background-color: #28a745;
+        }
+        .badge-absent {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h4 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Chamada de Alunos</h4>
+                </div>
+                <div class="col-auto">
+                    <span class="attendance-date">
+                        <i class="far fa-calendar-alt me-1"></i>
+                        <!-- Data atual no formato DD/MM/YYYY -->
+                        <span id="currentDate"></span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="container student-list">
+        <!-- Resumo da chamada -->
+        <div class="alert alert-info" role="alert">
+            <div class="row align-items-center">
+                <div class="col">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span>Total: <span id="totalStudents">0</span> alunos</span>
+                </div>
+                <div class="col-auto">
+                    <span class="badge rounded-pill badge-present me-1">Presentes: <span id="presentCount">0</span></span>
+                    <span class="badge rounded-pill badge-absent">Ausentes: <span id="absentCount">0</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Alunos -->
+        <div id="studentsList">
+            <!-- Os alunos serão adicionados via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Botão de Enviar Notificação (fixo na parte inferior) -->
+    <div class="bottom-button">
+        <div class="container">
+            <button id="sendNotificationsBtn" class="btn btn-primary w-100">
+                <i class="fas fa-paper-plane me-2"></i>Enviar Notificações de Falta
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Envio -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Deseja enviar notificações SMS para os responsáveis dos <span id="absentCountModal">0</span> alunos ausentes?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button id="confirmSendBtn" type="button" class="btn btn-primary">Confirmar Envio</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Sucesso -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Sucesso!</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <p class="text-center">Notificações enviadas com sucesso para os responsáveis de <span id="successAbsentCount">0</span> alunos!</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap e dependências JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Lista de alunos de exemplo
+        const students = [
+            { id: 1, name: "Ana Silva", contactNumber: "21975477253" },
+            { id: 2, name: "Bruno Santos", contactNumber: "11912345678" },
+            { id: 3, name: "Carolina Oliveira", contactNumber: "11978901234" },
+            { id: 4, name: "Daniel Pereira", contactNumber: "11965432109" },
+            { id: 5, name: "Eduarda Costa", contactNumber: "11923456789" },
+            { id: 6, name: "Fernando Lima", contactNumber: "11998765432" },
+            { id: 7, name: "Gabriela Martins", contactNumber: "11987123456" },
+            { id: 8, name: "Henrique Alves", contactNumber: "11956781234" },
+            { id: 9, name: "Isabel Rodrigues", contactNumber: "11934567890" },
+            { id: 10, name: "João Ferreira", contactNumber: "11945678901" },
+            { id: 11, name: "Karina Mendes", contactNumber: "11967891234" },
+            { id: 12, name: "Lucas Gomes", contactNumber: "11989012345" }
+        ];
+
+        // Função para formatar a data atual
+        function formatCurrentDate() {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        // Função para atualizar o contador de presença
+        function updateAttendanceCount() {
+            const totalStudents = students.length;
+            const absentStudents = document.querySelectorAll('.student-item.absent').length;
+            const presentStudents = totalStudents - absentStudents;
+            
+            document.getElementById('totalStudents').textContent = totalStudents;
+            document.getElementById('presentCount').textContent = presentStudents;
+            document.getElementById('absentCount').textContent = absentStudents;
+            document.getElementById('absentCountModal').textContent = absentStudents;
+            document.getElementById('successAbsentCount').textContent = absentStudents;
+            
+            // Desabilitar o botão de envio se não houver ausentes
+            const sendButton = document.getElementById('sendNotificationsBtn');
+            if (absentStudents === 0) {
+                sendButton.disabled = true;
+                sendButton.classList.replace('btn-primary', 'btn-secondary');
+            } else {
+                sendButton.disabled = false;
+                sendButton.classList.replace('btn-secondary', 'btn-primary');
+            }
+        }
+
+        // Função para marcar presença/ausência
+        function toggleAttendance(studentId) {
+            const studentElement = document.getElementById(`student-${studentId}`);
+            const statusBadge = studentElement.querySelector('.status-badge');
+            const statusIcon = studentElement.querySelector('.status-icon');
+            
+            if (studentElement.classList.contains('absent')) {
+                // Marcar como presente
+                studentElement.classList.remove('absent');
+                statusBadge.textContent = 'Presente';
+                statusBadge.classList.replace('bg-danger', 'bg-success');
+                statusIcon.classList.replace('fa-times-circle', 'fa-check-circle');
+                statusIcon.classList.replace('text-danger', 'text-success');
+            } else {
+                // Marcar como ausente
+                studentElement.classList.add('absent');
+                statusBadge.textContent = 'Ausente';
+                statusBadge.classList.replace('bg-success', 'bg-danger');
+                statusIcon.classList.replace('fa-check-circle', 'fa-times-circle');
+                statusIcon.classList.replace('text-success', 'text-danger');
+            }
+            
+            // Atualizar contadores
+            updateAttendanceCount();
+        }
+
+        // Função para simular o envio de SMS
+        function sendSMSNotifications() {
+            // Aqui seria a integração com um serviço real de SMS
+            // Por enquanto, apenas mostramos o modal de sucesso
+            const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+            successModal.show();
+            
+            // Log das notificações que seriam enviadas
+            console.log("Notificações SMS seriam enviadas para:");
+            document.querySelectorAll('.student-item.absent').forEach(student => {
+                const studentId = student.id.split('-')[1];
+                const studentData = students.find(s => s.id == studentId);
+                console.log(`- ${studentData.name}: ${studentData.contactNumber}`);
+            });
+        }
+
+        // Função para carregar a lista de alunos
+        function loadStudentsList() {
+            const studentsListElement = document.getElementById('studentsList');
+            studentsListElement.innerHTML = '';
+            
+            students.forEach(student => {
+                const studentCard = document.createElement('div');
+                studentCard.className = 'student-item student-card card';
+                studentCard.id = `student-${student.id}`;
+                
+                studentCard.innerHTML = `
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-1">${student.name}</h5>
+                            <small class="text-muted">
+                                <i class="fas fa-phone-alt me-1"></i>${student.contactNumber}
+                            </small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="status-badge badge bg-success me-2">Presente</span>
+                            <i class="status-icon fas fa-check-circle text-success" style="font-size: 1.5rem;"></i>
+                        </div>
+                    </div>
+                `;
+                
+                studentCard.addEventListener('click', () => toggleAttendance(student.id));
+                studentsListElement.appendChild(studentCard);
+            });
+            
+            // Inicializar o contador
+            updateAttendanceCount();
+        }
+
+        // Inicializar a página quando carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            // Definir a data atual
+            document.getElementById('currentDate').textContent = formatCurrentDate();
+            
+            // Carregar a lista de alunos
+            loadStudentsList();
+            
+            // Configurar o botão de enviar notificações
+            document.getElementById('sendNotificationsBtn').addEventListener('click', function() {
+                const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+                confirmationModal.show();
+            });
+            
+            // Configurar o botão de confirmação de envio
+            document.getElementById('confirmSendBtn').addEventListener('click', function() {
+                const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
+                confirmationModal.hide();
+                sendSMSNotifications();
+            });
+        });
+    </script>
+</body>
+</html>
